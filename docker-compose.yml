@@ -1,9 +1,29 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-genie_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-genie}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-genie} -d ${POSTGRES_DB:-genie_assistant}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   webhook:
     build: .
     ports:
       - "${PORT:-3002}:${PORT:-3002}"
     user: "0:0"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${HOME}/.claude-hub:/home/node/.claude
@@ -20,6 +40,7 @@ services:
       - CLAUDE_USE_CONTAINERS=1
       - CLAUDE_CONTAINER_IMAGE=claudecode:latest
       - CLAUDE_AUTH_HOST_DIR=${CLAUDE_AUTH_HOST_DIR:-${HOME}/.claude-hub}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-genie}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-genie_assistant}
       # Claude Code timeout settings for unattended mode
       - BASH_DEFAULT_TIMEOUT_MS=${BASH_DEFAULT_TIMEOUT_MS:-600000}  # 10 minutes default
       - BASH_MAX_TIMEOUT_MS=${BASH_MAX_TIMEOUT_MS:-1200000}  # 20 minutes max
@@ -34,6 +55,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
       - CLAUDE_WEBHOOK_SECRET=${CLAUDE_WEBHOOK_SECRET}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3002}/health"]
@@ -41,3 +63,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+volumes:
+  postgres_data:
