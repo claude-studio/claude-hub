@@ -2,143 +2,151 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Fork and Setup claude-hub Infrastructure",
         "description": "Fork claude-did-this/claude-hub to claude-studio/claude-hub and setup core infrastructure including Docker, PostgreSQL, and Cloudflare Tunnel",
         "details": "1. Fork claude-did-this/claude-hub to claude-studio/claude-hub repository\n2. Install Docker Desktop via `brew install --cask docker`\n3. Install PostgreSQL 16 via `brew install postgresql`\n4. Install Node.js 24 LTS via `brew install node`\n5. Install Cloudflare Tunnel via `brew install cloudflared`\n6. Configure macOS auto-login and power management settings\n7. Set up fixed local IP in router DHCP settings\n8. Test basic claude-hub webhook reception and Docker container execution\n9. Verify Claude Code CLI execution in Docker container\n10. Configure environment variables for GitHub webhook secret, bot username, API keys",
         "testStrategy": "Verify successful fork creation, test Docker container startup, confirm PostgreSQL connection, validate Cloudflare Tunnel webhook reception with test payload, ensure Claude Code CLI responds to basic commands within Docker environment",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-15T06:56:16.898Z"
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Configure GitHub App and PR Auto-Review Pipeline",
         "description": "Set up GitHub App permissions, webhook endpoints, and verify the existing claude-hub PR auto-review functionality works with check_suite events",
         "details": "1. Create GitHub App with required permissions: pull_requests:write, issues:write, contents:read, checks:read\n2. Configure webhook URL via Cloudflare Tunnel\n3. Set up HMAC-SHA256 webhook signature verification\n4. Test check_suite event triggering after CI completion\n5. Verify debouncing logic (PR_REVIEW_DEBOUNCE_MS=5000)\n6. Test duplicate review prevention via hasReviewedPRAtCommit()\n7. Configure AUTHORIZED_USERS environment variable\n8. Test manual bot mention commands in GitHub comments\n9. Verify operationType-based tool allowlists (pr-review vs auto-tagging)\n10. Validate GitHub API rate limiting and error handling",
         "testStrategy": "Create test PR, trigger CI completion, verify auto-review comment generation, test manual @bot mentions, confirm debouncing with multiple check_suite events, validate duplicate prevention with same commit SHA",
         "priority": "high",
         "dependencies": [
-          1
+          "1"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-15T08:14:57.309Z"
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Implement Frontend-Specific Review Rules",
         "description": "Create and implement FE-specific review rules in CLAUDE.md and .claude/rules/ directories with focus on accessibility, type-safety, bundle-size, and conventions",
         "details": "1. Design CLAUDE.md template with FE-specific sections:\n   - accessibility: img alt attributes, aria-labels, keyboard navigation, tabIndex usage\n   - type-safety: any type detection, type assertions, optional chaining, Props type definitions\n   - bundle-size: library imports, dynamic imports for large components\n   - convention: console.log detection, TODO/FIXME comments, useEffect dependencies\n2. Create .claude/rules/ directory structure for modular rule organization\n3. Implement rule detection prompts that output structured format for parsing\n4. Configure rule severity levels (error/warning/info)\n5. Test rule detection accuracy with sample React/TypeScript code\n6. Integrate rules into Docker container Claude Code execution\n7. Validate rule inheritance from repository .claude/rules/ during container execution",
         "testStrategy": "Create test React components with intentional FE violations (missing alt tags, any types, full library imports), run review and verify detection with appropriate severity levels and categorization",
         "priority": "high",
         "dependencies": [
-          2
+          "2"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-15T08:15:04.333Z"
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Design and Implement Database Schema",
         "description": "Design PostgreSQL database schema for storing review results, comments, and rule suggestions using Drizzle ORM",
         "details": "1. Install and configure Drizzle ORM with PostgreSQL adapter\n2. Create database schema:\n   - reviews table (id, pr_number, repo_full_name, commit_sha, decision, summary, processing_ms, created_at)\n   - review_comments table (id, review_id, file_path, line_number, severity, category, body, github_comment_id)\n   - rule_suggestions table (id, repo_full_name, category, pattern_description, suggested_rule_text, occurrence_count, status, created_at)\n3. Set up database migrations with Drizzle\n4. Create database connection pool and configuration\n5. Implement TypeScript types for all database entities\n6. Create indexes for performance (repo_full_name, created_at, category)\n7. Set up database seeding for development/testing\n8. Configure connection string and environment variables",
         "testStrategy": "Run migrations successfully, insert test data for all tables, verify foreign key relationships, test query performance with indexes, validate TypeScript type safety with database operations",
         "priority": "medium",
         "dependencies": [
-          1
+          "1"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-15T08:27:33.514Z"
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Integrate Review Result Storage with claude-hub",
         "description": "Modify claude-hub's githubService.ts and claudeService.ts to parse and store review results in PostgreSQL after comment posting",
         "details": "1. Extend githubService.ts postComment() function to trigger DB storage\n2. Implement review result parsing logic to extract:\n   - Categories (accessibility, type-safety, bundle-size, convention)\n   - Severity levels (error, warning, info)\n   - File paths and line numbers from GitHub diff context\n3. Create reviewStorage service for database operations\n4. Implement structured output parsing from Claude responses (JSON or marker-based)\n5. Handle parsing errors gracefully with fallback categorization\n6. Store review summary and individual comments with relationships\n7. Add processing time tracking (review start to completion)\n8. Implement async storage to avoid blocking GitHub response\n9. Add error handling and retry logic for database failures\n10. Log successful storage events for monitoring",
         "testStrategy": "Execute real PR review, verify all comments stored correctly with proper categorization, test parsing accuracy with various comment formats, validate relationship integrity between reviews and comments, ensure non-blocking operation",
         "priority": "high",
         "dependencies": [
-          3,
-          4
+          "3",
+          "4"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Implement Pattern Detection and Rule Suggestion Engine",
         "description": "Build algorithm to detect repetitive review patterns and generate CLAUDE.md rule suggestions based on stored review data",
         "details": "1. Implement pattern detection algorithm:\n   - Query review_comments for same category/pattern within time window (default: 2 weeks)\n   - Set configurable threshold for suggestion trigger (RULE_SUGGEST_THRESHOLD=5)\n   - Group similar patterns using text similarity or keyword matching\n2. Create rule suggestion generation logic:\n   - Template-based rule text generation for common patterns\n   - Extract pattern descriptions from comment analysis\n   - Generate actionable CLAUDE.md rule format\n3. Implement suggestion storage in rule_suggestions table\n4. Create deduplication logic to prevent duplicate suggestions\n5. Add suggestion lifecycle management (pending/adopted/dismissed)\n6. Implement background job or scheduled task for pattern analysis\n7. Create API endpoints for suggestion retrieval and status updates\n8. Add suggestion confidence scoring based on frequency and consistency",
         "testStrategy": "Generate test data with repeated patterns, verify suggestion creation after threshold, test deduplication logic, validate suggestion text quality and actionability, ensure proper status lifecycle management",
         "priority": "medium",
         "dependencies": [
-          5
+          "5"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Build Next.js Dashboard for Rule Management",
         "description": "Create Next.js 14 dashboard with App Router for displaying rule suggestions, review patterns, and analytics with Recharts visualization",
         "details": "IMPORTANT: Use /frontend-design skill for all UI implementation in this task.\n\n1. Initialize Next.js 14 project with App Router in dashboard/ directory\n2. Set up Tailwind CSS and component library (Shadcn/ui)\n3. Install and configure Recharts for data visualization\n4. Create main dashboard layout with navigation\n5. Implement rule suggestions page:\n   - List pending/adopted/dismissed suggestions\n   - Copy-to-clipboard functionality for rule text\n   - Status update buttons (adopted/dismissed)\n   - Repository filtering\n6. Create analytics page with Recharts:\n   - Weekly error/warning trends\n   - Category-based violation frequency\n   - Top 5 repetitive patterns\n   - Review processing time trends\n7. Implement API routes for data fetching (/api/suggestions, /api/analytics)\n8. Add responsive design for mobile access\n9. Implement authentication if needed (basic auth or GitHub OAuth)\n10. Configure dashboard port (DASHBOARD_PORT=3000)",
         "testStrategy": "Verify all dashboard pages load correctly, test rule suggestion management workflow, validate chart rendering with real data, confirm copy-to-clipboard functionality, test responsive design on mobile devices",
         "priority": "medium",
         "dependencies": [
-          6
+          "6"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Develop Bolt.js Slack Bot Integration",
         "description": "Create Slack bot using Bolt.js framework with Socket Mode for @mention commands including review requests, code questions, and rule queries",
         "details": "1. Install @slack/bolt and @slack/web-api packages\n2. Create Slack App with required permissions:\n   - app_mentions:read\n   - chat:write\n   - connections:write (for Socket Mode)\n3. Configure Socket Mode for WebSocket connection (no HTTP endpoints needed)\n4. Implement Bolt.js app with app.event('app_mention') handler\n5. Create command parsing logic for:\n   - @GENIE-ASSISTANT review owner/repo#42\n   - @GENIE-ASSISTANT 이 코드 뭐가 문제야? [code block]\n   - @GENIE-ASSISTANT rules owner/repo\n   - @GENIE-ASSISTANT status\n6. Implement 3-second ack pattern for Slack response requirements\n7. Create Docker execution integration for review commands\n8. Implement threaded responses using thread_ts\n9. Add error handling and user-friendly error messages\n10. Configure environment variables (SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET)",
         "testStrategy": "Test Slack app installation, verify @mention detection, test all command types with proper responses, validate thread responses, ensure 3-second ack compliance, test error handling scenarios",
         "priority": "medium",
         "dependencies": [
-          5,
-          6
+          "5",
+          "6"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Configure Docker Compose and Production Environment",
         "description": "Set up docker-compose.yml with PostgreSQL service, optimize Dockerfile.claudecode for FE tools, and configure production-ready environment",
         "details": "1. Extend docker-compose.yml to include PostgreSQL service:\n   - Configure persistent volume for database\n   - Set up network connectivity between services\n   - Add environment variable passthrough\n2. Optimize Dockerfile.claudecode for FE development:\n   - Add ESLint, Prettier, TypeScript compiler\n   - Install Node.js ecosystem tools\n   - Configure Git for FE project operations\n3. Create production environment configuration:\n   - Set up log rotation and monitoring\n   - Configure resource limits and health checks\n   - Implement graceful shutdown handling\n4. Create backup strategy for PostgreSQL data\n5. Set up monitoring and alerting for service health\n6. Configure automatic restart policies\n7. Implement environment variable validation on startup\n8. Create deployment scripts for Mac Mini homeserver\n9. Set up SSL/TLS certificates if needed\n10. Document production deployment and maintenance procedures",
         "testStrategy": "Verify docker-compose startup with all services, test database persistence across restarts, validate resource limits, ensure health checks work properly, test backup and restore procedures",
         "priority": "medium",
         "dependencies": [
-          1,
-          4
+          "1",
+          "4"
         ],
         "status": "pending",
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Integration Testing and Production Deployment",
         "description": "Perform end-to-end testing of the complete GENIE-ASSISTANT system and deploy to Mac Mini homeserver with monitoring and documentation",
         "details": "1. Create comprehensive E2E test suite:\n   - GitHub PR creation → auto-review → comment posting → DB storage\n   - Slack bot command testing across all supported operations\n   - Dashboard functionality and data accuracy\n   - Pattern detection and rule suggestion generation\n2. Performance testing:\n   - Concurrent PR review handling\n   - Database query optimization\n   - Docker container resource usage\n3. Deploy to Mac Mini homeserver:\n   - Configure Cloudflare Tunnel for webhook access\n   - Set up service monitoring and log aggregation\n   - Configure automatic startup on system boot\n4. Create operational documentation:\n   - Deployment procedures\n   - Troubleshooting guide\n   - Environment variable reference\n   - Backup and recovery procedures\n5. Implement health monitoring:\n   - Service status endpoints\n   - Database connection monitoring\n   - Slack bot connection status\n6. Set up alerting for critical failures\n7. Create team onboarding documentation\n8. Establish maintenance and update procedures\n9. Plan upstream sync strategy with claude-did-this/claude-hub\n10. Validate complete system functionality with real team usage",
         "testStrategy": "Execute full E2E workflow from PR creation to rule suggestion, verify all integrations work correctly, test system recovery from failures, validate performance under load, confirm monitoring and alerting effectiveness",
         "priority": "high",
         "dependencies": [
-          7,
-          8,
-          9
+          "7",
+          "8",
+          "9"
         ],
         "status": "pending",
         "subtasks": []
       }
     ],
     "metadata": {
-      "created": "2026-03-15T06:25:30.655Z",
-      "updated": "2026-03-15T06:25:30.655Z",
-      "description": "Tasks for master context"
+      "version": "1.0.0",
+      "lastModified": "2026-03-15T08:27:33.514Z",
+      "taskCount": 10,
+      "completedCount": 4,
+      "tags": [
+        "master"
+      ]
     }
   }
 }
