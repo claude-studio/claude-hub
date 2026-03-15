@@ -8,8 +8,10 @@ const colorMap = {
   orange: "bg-orange-900/40 text-orange-400 ring-orange-800/50",
 };
 
+import type { ReactNode } from "react";
+
 interface BadgeProps {
-  children: React.ReactNode;
+  children: ReactNode;
   color?: keyof typeof colorMap;
 }
 

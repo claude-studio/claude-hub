@@ -90,5 +90,13 @@ services:
       retries: 3
       start_period: 15s
 
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --url http://webhook:${PORT:-3002}
+    depends_on:
+      webhook:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

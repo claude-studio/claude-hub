@@ -390,6 +390,7 @@ async function handlePullRequestComment(
       try {
         // Process the command with Claude
         logger.info('Sending command to Claude service');
+        const startMs = Date.now();
         const claudeResponse = await processCommand({
           repoFullName: repo.full_name,
           issueNumber: pr.number,
@@ -397,6 +398,16 @@ async function handlePullRequestComment(
           isPullRequest: true,
           branchName: pr.head.ref
         });
+        const processingMs = Date.now() - startMs;
+
+        // Store result in DB asynchronously (non-blocking)
+        storeReviewResult({
+          prNumber: pr.number,
+          repoFullName: repo.full_name,
+          commitSha: pr.head.sha,
+          responseText: claudeResponse,
+          processingMs
+        }).catch(() => {});
 
         // Return Claude's response in the webhook response
         logger.info('Returning Claude response via webhook');
@@ -546,6 +557,7 @@ async function processBotMention(
     try {
       // Process the command with Claude
       logger.info('Sending command to Claude service');
+      const startMs = Date.now();
       const claudeResponse = await processCommand({
         repoFullName: repo.full_name,
         issueNumber: issue.number,
@@ -553,6 +565,16 @@ async function processBotMention(
         isPullRequest: false,
         branchName: null
       });
+      const processingMs = Date.now() - startMs;
+
+      // Store mention result in DB asynchronously (non-blocking)
+      storeReviewResult({
+        prNumber: issue.number,
+        repoFullName: repo.full_name,
+        commitSha: `issue-${issue.number}`,
+        responseText: claudeResponse,
+        processingMs
+      }).catch(() => {});
 
       // Post Claude's response as a comment on the issue
       logger.info('Posting Claude response as GitHub comment');

@@ -5,81 +5,75 @@ import { sql, desc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    // 1. Category distribution (from review_comments)
-    const categoryStats = await db
-      .select({
+    // async-parallel: run all independent DB queries concurrently
+    const [
+      categoryStats,
+      severityStats,
+      decisionStats,
+      weeklyTrend,
+      dailyTrend,
+      topRepos,
+      totalReviewsResult,
+      totalCommentsResult,
+    ] = await Promise.all([
+      db.select({
         category: reviewComments.category,
         count: sql<number>`count(*)`.as('count'),
       })
-      .from(reviewComments)
-      .groupBy(reviewComments.category)
-      .orderBy(desc(sql`count(*)`));
+        .from(reviewComments)
+        .groupBy(reviewComments.category)
+        .orderBy(desc(sql`count(*)`)),
 
-    // 2. Severity distribution
-    const severityStats = await db
-      .select({
+      db.select({
         severity: reviewComments.severity,
         count: sql<number>`count(*)`.as('count'),
       })
-      .from(reviewComments)
-      .groupBy(reviewComments.severity)
-      .orderBy(desc(sql`count(*)`));
+        .from(reviewComments)
+        .groupBy(reviewComments.severity)
+        .orderBy(desc(sql`count(*)`)),
 
-    // 3. Decision distribution
-    const decisionStats = await db
-      .select({
+      db.select({
         decision: reviews.decision,
         count: sql<number>`count(*)`.as('count'),
       })
-      .from(reviews)
-      .groupBy(reviews.decision)
-      .orderBy(desc(sql`count(*)`));
+        .from(reviews)
+        .groupBy(reviews.decision)
+        .orderBy(desc(sql`count(*)`)),
 
-    // 4. Weekly trend (reviews per day for the past 7 weeks)
-    const weeklyTrend = await db
-      .select({
+      db.select({
         week: sql<string>`date_trunc('week', ${reviews.createdAt})::date`.as('week'),
         count: sql<number>`count(*)`.as('count'),
       })
-      .from(reviews)
-      .where(sql`${reviews.createdAt} >= now() - interval '7 weeks'`)
-      .groupBy(sql`date_trunc('week', ${reviews.createdAt})`)
-      .orderBy(sql`date_trunc('week', ${reviews.createdAt})`);
+        .from(reviews)
+        .where(sql`${reviews.createdAt} >= now() - interval '7 weeks'`)
+        .groupBy(sql`date_trunc('week', ${reviews.createdAt})`)
+        .orderBy(sql`date_trunc('week', ${reviews.createdAt})`),
 
-    // 5. Daily trend (last 30 days)
-    const dailyTrend = await db
-      .select({
+      db.select({
         day: sql<string>`date_trunc('day', ${reviews.createdAt})::date`.as('day'),
         count: sql<number>`count(*)`.as('count'),
       })
-      .from(reviews)
-      .where(sql`${reviews.createdAt} >= now() - interval '30 days'`)
-      .groupBy(sql`date_trunc('day', ${reviews.createdAt})`)
-      .orderBy(sql`date_trunc('day', ${reviews.createdAt})`);
+        .from(reviews)
+        .where(sql`${reviews.createdAt} >= now() - interval '30 days'`)
+        .groupBy(sql`date_trunc('day', ${reviews.createdAt})`)
+        .orderBy(sql`date_trunc('day', ${reviews.createdAt})`),
 
-    // 6. Top repos
-    const topRepos = await db
-      .select({
+      db.select({
         repoFullName: reviews.repoFullName,
         reviewCount: sql<number>`count(*)`.as('review_count'),
       })
-      .from(reviews)
-      .groupBy(reviews.repoFullName)
-      .orderBy(desc(sql`count(*)`))
-      .limit(10);
+        .from(reviews)
+        .groupBy(reviews.repoFullName)
+        .orderBy(desc(sql`count(*)`))
+        .limit(10),
 
-    // 7. Total counts
-    const [totalReviews] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(reviews);
-
-    const [totalComments] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(reviewComments);
+      db.select({ count: sql<number>`count(*)` }).from(reviews),
+      db.select({ count: sql<number>`count(*)` }).from(reviewComments),
+    ]);
 
     return NextResponse.json({
-      totalReviews: Number(totalReviews?.count ?? 0),
-      totalComments: Number(totalComments?.count ?? 0),
+      totalReviews: Number(totalReviewsResult[0]?.count ?? 0),
+      totalComments: Number(totalCommentsResult[0]?.count ?? 0),
       categoryStats: categoryStats.map(r => ({
         category: r.category ?? 'uncategorized',
         count: Number(r.count),

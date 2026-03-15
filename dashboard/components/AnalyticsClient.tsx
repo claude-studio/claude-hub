@@ -16,6 +16,9 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
+import StatCard from "@/components/StatCard";
+import ChartCard from "@/components/ChartCard";
+import ErrorAlert from "@/components/ErrorAlert";
 
 interface AnalyticsData {
   totalReviews: number;
@@ -44,47 +47,26 @@ const DECISION_COLORS: Record<string, string> = {
 
 const CATEGORY_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: number | string;
-  sub?: string;
-}) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className="text-3xl font-bold text-white mt-1">{value}</p>
-      {sub && <p className="text-xs text-gray-600 mt-1">{sub}</p>}
-    </div>
-  );
-}
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-gray-300 mb-4">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
 export default function AnalyticsClient() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/analytics")
+    const controller = new AbortController();
+    fetch("/api/analytics", { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new Error("Failed to fetch");
         const json = await res.json() as AnalyticsData;
         setData(json);
       })
-      .catch(() => setError("Failed to load analytics data."))
+      .catch((err: unknown) => {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError("Failed to load analytics data.");
+        }
+      })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   if (loading) {
@@ -92,24 +74,20 @@ export default function AnalyticsClient() {
       <div className="animate-pulse space-y-6">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 bg-gray-800 rounded-xl" />
+            <div key={i} className="h-24 rounded-xl" style={{ background: "var(--border)" }} />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-64 bg-gray-800 rounded-xl" />
+            <div key={i} className="h-64 rounded-xl" style={{ background: "var(--border)" }} />
           ))}
         </div>
       </div>
     );
   }
 
-  if (error || !data) {
-    return (
-      <div className="bg-red-900/20 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
-        {error ?? "No data available."}
-      </div>
-    );
+  if (error !== null || !data) {
+    return <ErrorAlert message={error ?? "No data available."} />;
   }
 
   const avgComments =
@@ -142,20 +120,20 @@ export default function AnalyticsClient() {
         <ChartCard title="Daily Reviews (last 30 days)">
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={data.dailyTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
               <XAxis
                 dataKey="day"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
+                tick={{ fill: "#AEAEB2", fontSize: 11 }}
                 tickFormatter={(v: string) =>
                   new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric" })
                 }
                 interval="preserveStartEnd"
               />
-              <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} allowDecimals={false} />
+              <YAxis tick={{ fill: "#AEAEB2", fontSize: 11 }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                labelStyle={{ color: "#9ca3af" }}
-                itemStyle={{ color: "#a5b4fc" }}
+                contentStyle={{ background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                labelStyle={{ color: "#6E6E73" }}
+                itemStyle={{ color: "#0071E3" }}
                 labelFormatter={(v) =>
                   new Date(String(v)).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
                 }
@@ -163,7 +141,7 @@ export default function AnalyticsClient() {
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#6366f1"
+                stroke="#0071E3"
                 strokeWidth={2}
                 dot={false}
                 name="Reviews"
@@ -191,18 +169,18 @@ export default function AnalyticsClient() {
                 {data.severityStats.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={SEVERITY_COLORS[entry.severity] ?? "#6b7280"}
+                    fill={SEVERITY_COLORS[entry.severity] ?? "#AEAEB2"}
                   />
                 ))}
               </Pie>
               <Legend
                 formatter={(value: string) => (
-                  <span style={{ color: "#9ca3af", fontSize: 12 }}>{value}</span>
+                  <span style={{ color: "#6E6E73", fontSize: 12 }}>{value}</span>
                 )}
               />
               <Tooltip
-                contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                itemStyle={{ color: "#d1d5db" }}
+                contentStyle={{ background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                itemStyle={{ color: "#1C1C1E" }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -212,17 +190,17 @@ export default function AnalyticsClient() {
         <ChartCard title="Comments by Category">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={data.categoryStats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+              <XAxis type="number" tick={{ fill: "#AEAEB2", fontSize: 11 }} />
               <YAxis
                 type="category"
                 dataKey="category"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#6E6E73", fontSize: 11 }}
                 width={90}
               />
               <Tooltip
-                contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                itemStyle={{ color: "#d1d5db" }}
+                contentStyle={{ background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                itemStyle={{ color: "#1C1C1E" }}
               />
               <Bar dataKey="count" name="Comments" radius={[0, 4, 4, 0]}>
                 {data.categoryStats.map((_, index) => (
@@ -240,16 +218,16 @@ export default function AnalyticsClient() {
         <ChartCard title="Review Decisions">
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={data.decisionStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
               <XAxis
                 dataKey="decision"
-                tick={{ fill: "#9ca3af", fontSize: 11 }}
+                tick={{ fill: "#6E6E73", fontSize: 11 }}
                 tickFormatter={(v: string) => v.replace("_", " ")}
               />
-              <YAxis tick={{ fill: "#6b7280", fontSize: 11 }} allowDecimals={false} />
+              <YAxis tick={{ fill: "#AEAEB2", fontSize: 11 }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                itemStyle={{ color: "#d1d5db" }}
+                contentStyle={{ background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                itemStyle={{ color: "#1C1C1E" }}
                 formatter={(value) => [value, "Reviews"]}
                 labelFormatter={(v) => String(v).replace("_", " ")}
               />
@@ -257,7 +235,7 @@ export default function AnalyticsClient() {
                 {data.decisionStats.map((entry, index) => (
                   <Cell
                     key={`dec-${index}`}
-                    fill={DECISION_COLORS[entry.decision] ?? "#6b7280"}
+                    fill={DECISION_COLORS[entry.decision] ?? "#AEAEB2"}
                   />
                 ))}
               </Bar>
@@ -267,32 +245,34 @@ export default function AnalyticsClient() {
       </div>
 
       {/* Top repos table */}
-      {data.topRepos.length > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 mb-4">Top Repositories</h3>
+      {data.topRepos.length > 0 ? (
+        <div className="rounded-xl p-5 border" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+          <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Top Repositories</h3>
           <div className="space-y-2">
-            {data.topRepos.map((repo, i) => {
+            {(() => {
               const max = data.topRepos[0]?.reviewCount ?? 1;
-              const pct = (repo.reviewCount / max) * 100;
-              return (
-                <div key={repo.repoFullName} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 w-4 text-right">{i + 1}</span>
-                  <span className="text-sm text-gray-300 w-48 truncate">{repo.repoFullName}</span>
-                  <div className="flex-1 bg-gray-800 rounded-full h-2">
-                    <div
-                      className="bg-indigo-500 h-2 rounded-full transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
+              return data.topRepos.map((repo, i) => {
+                const pct = (repo.reviewCount / max) * 100;
+                return (
+                  <div key={repo.repoFullName} className="flex items-center gap-3">
+                    <span className="text-xs w-4 text-right" style={{ color: "var(--text-tertiary)" }}>{i + 1}</span>
+                    <span className="text-sm w-48 truncate" style={{ color: "var(--text-secondary)" }}>{repo.repoFullName}</span>
+                    <div className="flex-1 rounded-full h-2" style={{ background: "var(--surface-secondary)" }}>
+                      <div
+                        className="h-2 rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: "var(--accent)" }}
+                      />
+                    </div>
+                    <span className="text-xs w-16 text-right" style={{ color: "var(--text-tertiary)" }}>
+                      {repo.reviewCount} review{repo.reviewCount !== 1 ? "s" : ""}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 w-16 text-right">
-                    {repo.reviewCount} review{repo.reviewCount !== 1 ? "s" : ""}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
