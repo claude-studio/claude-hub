@@ -79,10 +79,27 @@ else
   echo "No GitHub token provided, skipping GitHub authentication"
 fi
 
-# Clone the repository as node user
+# Clone the repository as node user (shallow clone for performance)
 if [ -n "${GITHUB_TOKEN}" ] && [ -n "${REPO_FULL_NAME}" ]; then
-  echo "Cloning repository ${REPO_FULL_NAME}..." >&2
-  sudo -u node git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git" /workspace/repo >&2
+  echo "Cloning repository ${REPO_FULL_NAME} (shallow)..." >&2
+
+  if [ "${IS_PULL_REQUEST}" = "true" ] && [ -n "${BRANCH_NAME}" ]; then
+    # PR: shallow clone the specific branch directly
+    sudo -u node git clone \
+      --depth 1 \
+      --single-branch \
+      --branch "${BRANCH_NAME}" \
+      "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git" \
+      /workspace/repo >&2
+  else
+    # Default/auto-tagging: shallow clone main branch
+    sudo -u node git clone \
+      --depth 1 \
+      --single-branch \
+      "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git" \
+      /workspace/repo >&2
+  fi
+
   cd /workspace/repo
 else
   echo "Skipping repository clone - missing GitHub token or repository name" >&2
@@ -91,12 +108,9 @@ fi
 
 # Checkout the correct branch based on operation type
 if [ "${OPERATION_TYPE}" = "auto-tagging" ]; then
-    # Auto-tagging always uses main branch (doesn't need specific branches)
     echo "Using main branch for auto-tagging" >&2
-    sudo -u node git checkout main >&2 || sudo -u node git checkout master >&2
 elif [ "${IS_PULL_REQUEST}" = "true" ] && [ -n "${BRANCH_NAME}" ]; then
-    echo "Checking out PR branch: ${BRANCH_NAME}" >&2
-    sudo -u node git checkout "${BRANCH_NAME}" >&2
+    echo "Using PR branch: ${BRANCH_NAME} (already checked out via shallow clone)" >&2
 else
     echo "Using main branch" >&2
     sudo -u node git checkout main >&2 || sudo -u node git checkout master >&2
