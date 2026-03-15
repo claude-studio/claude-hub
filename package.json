@@ -39,6 +39,8 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
+    "@slack/bolt": "^4.6.0",
+    "@slack/web-api": "^7.15.0",
     "axios": "^1.6.2",
     "body-parser": "^2.2.0",
     "commander": "^14.0.0",

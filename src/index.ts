@@ -6,6 +6,7 @@ import { createLogger } from './utils/logger';
 import { StartupMetrics } from './utils/startup-metrics';
 import githubRoutes from './routes/github';
 import webhookRoutes from './routes/webhooks';
+import analyticsRoutes from './routes/analytics';
 import type { WebhookRequest, HealthCheckResponse, ErrorResponse } from './types/express';
 import { execSync, execFileSync } from 'child_process';
 
@@ -101,6 +102,7 @@ startupMetrics.recordMilestone('middleware_configured', 'Express middleware conf
 // Routes
 app.use('/api/webhooks/github', githubRoutes); // Legacy endpoint
 app.use('/api/webhooks', webhookRoutes); // New modular webhook endpoint
+app.use('/api', analyticsRoutes); // Analytics, suggestions, reviews
 
 startupMetrics.recordMilestone('routes_configured', 'API routes configured');
 
@@ -190,6 +192,15 @@ if (require.main === module) {
     const totalStartupTime = startupMetrics.markReady();
     appLogger.info(`Server running on port ${PORT} (startup took ${totalStartupTime}ms)`);
   });
+
+  // Slack bot (optional, only if tokens configured)
+  if (process.env['SLACK_BOT_TOKEN'] && process.env['SLACK_APP_TOKEN']) {
+    import('./services/slackBot')
+      .then(({ startSlackBot }) =>
+        startSlackBot().catch((err: Error) => appLogger.error({ err }, 'Slack bot failed to start'))
+      )
+      .catch((err: Error) => appLogger.error({ err }, 'Failed to load Slack bot module'));
+  }
 }
 
 export default app;
