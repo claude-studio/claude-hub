@@ -55,6 +55,13 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
       - CLAUDE_WEBHOOK_SECRET=${CLAUDE_WEBHOOK_SECRET}
+      # Slack bot (optional)
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET:-}
+      # Pattern detection
+      - RULE_SUGGEST_THRESHOLD=${RULE_SUGGEST_THRESHOLD:-5}
+      - RULE_SUGGEST_WINDOW_DAYS=${RULE_SUGGEST_WINDOW_DAYS:-14}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${PORT:-3002}/health"]
@@ -62,6 +69,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${DASHBOARD_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-genie}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-genie_assistant}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 volumes:
   postgres_data:
