@@ -170,9 +170,7 @@ export default async function ReviewDetailPage({
                         </code>
                       )}
                     </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                      {c.body}
-                    </p>
+                    <MarkdownRenderer content={c.body} />
                   </div>
                 );
               })}

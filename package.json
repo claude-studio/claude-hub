@@ -35,7 +35,15 @@
     "prepare": "husky || true",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:deploy": "docker compose build && docker compose up -d",
+    "docker:deploy:webhook": "docker compose build webhook && docker compose up -d webhook",
+    "docker:deploy:dashboard": "docker compose build dashboard && docker compose up -d dashboard",
+    "docker:restart": "docker compose restart",
+    "docker:ps": "docker compose ps"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",

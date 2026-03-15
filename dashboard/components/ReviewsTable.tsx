@@ -45,6 +45,16 @@ async function fetchReviews(): Promise<{ data: ReviewRow[]; total: number }> {
   };
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, '') // 코드 블록 제거
+    .replace(/`[^`]+`/g, '') // 인라인 코드 제거
+    .replace(/^#{1,6}\s+/gm, '') // 헤더 기호 제거
+    .replace(/[*_~>]/g, '') // 강조, 취소선, 인용 제거
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 링크 텍스트만 남김
+    .replace(/\n{3,}/g, '\n\n') // 3줄 이상 연속 줄바꿈 → 2줄로 축소
+    .trim();
+}
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -124,7 +134,7 @@ export default async function ReviewsTable() {
         <div>
           {reviews.map(r => {
             const decision = r.decision ? decisionStyle[r.decision] : null;
-            const summary = r.summary?.trim().slice(0, 200) ?? '';
+            const summary = r.summary ? stripMarkdown(r.summary).slice(0, 200) : '';
             const repoShort = r.repoFullName.split('/').pop() ?? r.repoFullName;
 
             return (
@@ -166,7 +176,7 @@ export default async function ReviewsTable() {
                   {/* Summary */}
                   {summary && (
                     <p
-                      className="text-sm leading-relaxed mb-3 line-clamp-2"
+                      className="text-sm leading-relaxed mb-3 line-clamp-3 whitespace-pre-line"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       {summary}
