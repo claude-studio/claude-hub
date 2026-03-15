@@ -3,6 +3,7 @@ services:
     build: .
     ports:
       - "${PORT:-3002}:${PORT:-3002}"
+    user: "0:0"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${HOME}/.claude-hub:/home/node/.claude
