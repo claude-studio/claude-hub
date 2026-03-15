@@ -97,3 +97,22 @@ secrets/
 /test-*.js
 /PR_SUMMARY.md
 /*-proposal.md
+
+# Local Claude configuration (personal, not shared)
+.claude/local/
+
+dev-debug.log
+# Dependency directories
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 
