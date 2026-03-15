@@ -300,18 +300,15 @@ Complete the auto-tagging task using only the minimal required tools.`;
    - Create a pull request if appropriate
 3. Iterate until the task is complete - don't stop at partial solutions
 4. Always check in your work by pushing to the remote before finishing
-5. Use 'gh issue comment' or 'gh pr comment' to provide updates on your progress
-6. If you encounter errors, debug and fix them before completing
-7. **IMPORTANT - Markdown Formatting:**
+5. If you encounter errors, debug and fix them before completing
+6. **IMPORTANT - Markdown Formatting:**
    - When your response contains markdown (like headers, lists, code blocks), return it as properly formatted markdown
    - Do NOT escape or encode special characters like newlines (\\n) or quotes
    - Return clean, human-readable markdown that GitHub will render correctly
    - Your response should look like normal markdown text, not escaped strings
-8. **Request Acknowledgment:**
-   - For larger or complex tasks that will take significant time, first acknowledge the request
-   - Post a brief comment like "I understand. Working on [task description]..." before starting
-   - Use 'gh issue comment' or 'gh pr comment' to post this acknowledgment immediately
-   - This lets the user know their request was received and is being processed
+7. **Be concise** - Keep responses brief and focused. Use bullet points over long paragraphs. Avoid restating the question.
+8. **IMPORTANT - Do NOT post GitHub comments directly** (via 'gh issue comment' or 'gh pr comment').
+   Your response text will be automatically posted as a GitHub comment by the system. Posting comments yourself will cause duplicates.
 
 **User Request:**
 ${command}

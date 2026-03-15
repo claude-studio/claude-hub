@@ -49,6 +49,23 @@ if [ -d "/home/node/.claude" ]; then
   ls -la "$CLAUDE_WORK_DIR/.credentials.json" >&2 || echo "DEBUG: .credentials.json not found" >&2
   
   echo "Claude authentication directory synced to $CLAUDE_WORK_DIR" >&2
+
+  # Copy .claude.json to workspace root (HOME level) where Claude Code expects it
+  # Claude Code looks for HOME/.claude.json = /workspace/.claude.json
+  # but the mounted dir puts it at /home/node/.claude/.claude.json
+  if [ -f "/home/node/.claude/.claude.json" ]; then
+    cp "/home/node/.claude/.claude.json" "/workspace/.claude.json"
+    chown node:node "/workspace/.claude.json"
+    echo "Copied .claude.json to /workspace/.claude.json" >&2
+  else
+    # Fallback: restore from backup if available
+    BACKUP_FILE=$(ls -t /workspace/.claude/backups/.claude.json.backup.* 2>/dev/null | head -1)
+    if [ -n "$BACKUP_FILE" ]; then
+      cp "$BACKUP_FILE" "/workspace/.claude.json"
+      chown node:node "/workspace/.claude.json"
+      echo "Restored .claude.json from backup: $BACKUP_FILE" >&2
+    fi
+  fi
 else
   echo "WARNING: No Claude authentication source found at /home/node/.claude." >&2
 fi

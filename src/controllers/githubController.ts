@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { processCommand } from '../services/claudeService';
+import { storeReviewResult } from '../services/reviewStorageService';
 import {
   postComment,
   addLabelsToIssue,
@@ -7,7 +8,8 @@ import {
   hasReviewedPRAtCommit,
   getCheckSuitesForRef,
   managePRLabels,
-  getPullRequestDetails
+  getPullRequestDetails,
+  addCommentReaction
 } from '../services/githubService';
 import { createLogger } from '../utils/logger';
 import { sanitizeBotMentions } from '../utils/sanitize';
@@ -488,6 +490,14 @@ async function processBotMention(
     `Processing ${BOT_USERNAME} mention from authorized user`
   );
 
+  // Add 👀 reaction to indicate the bot is processing the request
+  addCommentReaction({
+    repoOwner: repo.owner.login,
+    repoName: repo.name,
+    commentId: comment.id,
+    content: 'eyes'
+  }).catch(() => {});
+
   // Extract the command for Claude
   const escapedUsername = BOT_USERNAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const mentionRegex = new RegExp(`${escapedUsername}\\s+(.*)`, 's');
@@ -500,7 +510,7 @@ async function processBotMention(
     if (command.toLowerCase() === 'review') {
       // Check if this is already a PR object
       if ('head' in issue && 'base' in issue) {
-        return await handleManualPRReview(issue, repo, comment.user, res);
+        return await handleManualPRReview(issue, repo, comment.user, res, comment.id);
       }
 
       // Check if this issue is actually a PR (GitHub includes pull_request property for PR comments)
@@ -535,7 +545,7 @@ async function processBotMention(
           base: prDetails.base
         } as GitHubPullRequest;
 
-        return await handleManualPRReview(mockPR, repo, comment.user, res);
+        return await handleManualPRReview(mockPR, repo, comment.user, res, comment.id);
       }
     }
 
@@ -558,6 +568,14 @@ async function processBotMention(
         issueNumber: issue.number,
         body: claudeResponse
       });
+
+      // Add 🚀 reaction to indicate the bot has finished processing
+      addCommentReaction({
+        repoOwner: repo.owner.login,
+        repoName: repo.name,
+        commentId: comment.id,
+        content: 'rocket'
+      }).catch(() => {});
 
       // Return success in the webhook response
       logger.info('Claude response posted successfully');
@@ -586,7 +604,8 @@ async function handleManualPRReview(
   pr: GitHubPullRequest,
   repo: GitHubRepository,
   sender: { login: string },
-  res: Response<WebhookResponse | ErrorResponse>
+  res: Response<WebhookResponse | ErrorResponse>,
+  commentId?: number
 ): Promise<Response<WebhookResponse | ErrorResponse>> {
   try {
     // Check if the sender is authorized to trigger reviews
@@ -667,6 +686,7 @@ async function handleManualPRReview(
 
     // Process the PR review with Claude
     logger.info('Sending PR for manual Claude review');
+    const reviewStartTime = Date.now();
     const claudeResponse = await processCommand({
       repoFullName: repo.full_name,
       issueNumber: pr.number,
@@ -675,6 +695,7 @@ async function handleManualPRReview(
       branchName: pr.head.ref,
       operationType: 'manual-pr-review'
     });
+    const processingMs = Date.now() - reviewStartTime;
 
     logger.info(
       {
@@ -685,6 +706,27 @@ async function handleManualPRReview(
       },
       'Manual PR review completed successfully'
     );
+
+    // Store review result in DB asynchronously (non-blocking)
+    if (claudeResponse) {
+      storeReviewResult({
+        prNumber: pr.number,
+        repoFullName: repo.full_name,
+        commitSha: pr.head.sha,
+        responseText: claudeResponse,
+        processingMs
+      }).catch(() => {});
+    }
+
+    // Add 🚀 reaction to indicate the review is complete
+    if (commentId) {
+      addCommentReaction({
+        repoOwner: repo.owner.login,
+        repoName: repo.name,
+        commentId,
+        content: 'rocket'
+      }).catch(() => {});
+    }
 
     // Update label to show review is complete
     try {
@@ -1071,6 +1113,7 @@ async function processAutomatedPRReviews(
 
         // Process the PR review with Claude
         logger.info('Sending PR for automated Claude review');
+        const reviewStartTime = Date.now();
         const claudeResponse = await processCommand({
           repoFullName: repo.full_name,
           issueNumber: pr.number,
@@ -1079,6 +1122,7 @@ async function processAutomatedPRReviews(
           branchName: pr.head.ref,
           operationType: 'pr-review'
         });
+        const processingMs = Date.now() - reviewStartTime;
 
         logger.info(
           {
@@ -1088,6 +1132,17 @@ async function processAutomatedPRReviews(
           },
           'Automated PR review completed successfully'
         );
+
+        // Store review result in DB asynchronously (non-blocking)
+        if (claudeResponse) {
+          storeReviewResult({
+            prNumber: pr.number,
+            repoFullName: repo.full_name,
+            commitSha,
+            responseText: claudeResponse,
+            processingMs
+          }).catch(() => {});
+        }
 
         // Update label to show review is complete
         try {
@@ -1215,6 +1270,16 @@ Please perform a comprehensive code review of this pull request. Focus on:
 - Performance concerns
 - Test coverage
 - Documentation completeness
+
+## Repository Guidelines (Check First)
+Before reviewing, check if this repository has custom guidelines:
+\`\`\`bash
+# Check for CLAUDE.md
+cat CLAUDE.md 2>/dev/null || echo "No CLAUDE.md found"
+# Check for .claude/rules/
+ls .claude/rules/ 2>/dev/null && cat .claude/rules/*.md 2>/dev/null || echo "No .claude/rules/ found"
+\`\`\`
+If found, **prioritize these guidelines** in your review. If not found, use the default review criteria below.
 
 ## Getting Started
 1. First, get the PR metadata to understand what this PR is about:
@@ -1374,6 +1439,7 @@ Create a single comprehensive review comment with all feedback.
 5. **Prioritize critical issues** - security, breaking changes, logic errors
 6. **Complete your review** with an appropriate event type (APPROVE, REQUEST_CHANGES, or COMMENT)
 7. **Include commit SHA** - Always include "Reviewed at commit: ${commitSha}" in your final review comment
+8. **Be concise** - Keep feedback brief and to the point. Use bullet points over long paragraphs.
 
 Please perform a comprehensive review of PR #${prNumber} in repository ${repoFullName}.`;
 }

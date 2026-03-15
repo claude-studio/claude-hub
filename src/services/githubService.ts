@@ -702,6 +702,51 @@ export async function getCheckSuitesForRef({
 }
 
 /**
+ * Adds a reaction to a GitHub issue comment
+ */
+export async function addCommentReaction({
+  repoOwner,
+  repoName,
+  commentId,
+  content
+}: {
+  repoOwner: string;
+  repoName: string;
+  commentId: number;
+  content: 'eyes' | 'rocket' | '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray';
+}): Promise<void> {
+  try {
+    const repoPattern = /^[a-zA-Z0-9._-]+$/;
+    if (!repoPattern.test(repoOwner) || !repoPattern.test(repoName)) {
+      throw new Error('Invalid repository owner or name - contains unsafe characters');
+    }
+
+    const client = getOctokit();
+    if (process.env.NODE_ENV === 'test' || !client) {
+      return;
+    }
+
+    await client.reactions.createForIssueComment({
+      owner: repoOwner,
+      repo: repoName,
+      comment_id: commentId,
+      content
+    });
+
+    logger.info(
+      { repo: `${repoOwner}/${repoName}`, commentId, content },
+      'Reaction added to comment'
+    );
+  } catch (error) {
+    const err = error as Error;
+    logger.warn(
+      { err: err.message, repoOwner, repoName, commentId },
+      'Failed to add reaction to comment'
+    );
+  }
+}
+
+/**
  * Add or remove labels on a pull request
  */
 export async function managePRLabels({
