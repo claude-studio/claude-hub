@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import type { WebhookRequest } from '../../types/express';
 import type { WebhookProvider, BaseWebhookPayload } from '../../types/webhook';
 import type { ClaudeOrchestrationPayload } from '../../types/claude-orchestration';
@@ -26,7 +26,10 @@ export class ClaudeWebhookProvider implements WebhookProvider<ClaudeWebhookPaylo
     }
 
     const token = authHeader.substring(7);
-    return Promise.resolve(token === secret);
+    const tokenBuf = Buffer.from(token);
+    const secretBuf = Buffer.from(secret);
+    if (tokenBuf.length !== secretBuf.length) return Promise.resolve(false);
+    return Promise.resolve(timingSafeEqual(tokenBuf, secretBuf));
   }
 
   /**

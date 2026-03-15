@@ -7,7 +7,7 @@ import { StartupMetrics } from './utils/startup-metrics';
 import githubRoutes from './routes/github';
 import webhookRoutes from './routes/webhooks';
 import type { WebhookRequest, HealthCheckResponse, ErrorResponse } from './types/express';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 
 const app = express();
 
@@ -138,7 +138,7 @@ app.get('/health', (req: WebhookRequest, res: express.Response<HealthCheckRespon
   const imageCheckStart = Date.now();
   const dockerImageName = process.env['CLAUDE_CONTAINER_IMAGE'] ?? 'claudecode:latest';
   try {
-    execSync(`docker image inspect ${dockerImageName}`, { stdio: 'ignore' });
+    execFileSync('docker', ['image', 'inspect', dockerImageName], { stdio: 'ignore' });
     checks.claudeCodeImage.available = true;
   } catch {
     checks.claudeCodeImage.error = 'Image not found';

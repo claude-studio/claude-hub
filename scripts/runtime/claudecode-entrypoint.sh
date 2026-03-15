@@ -25,28 +25,19 @@ if [ -d "/home/node/.claude" ]; then
   CLAUDE_WORK_DIR="/workspace/.claude"
   mkdir -p "$CLAUDE_WORK_DIR"
   
-  echo "DEBUG: Source auth directory contents:" >&2
-  ls -la /home/node/.claude/ >&2 || echo "DEBUG: Source auth directory not accessible" >&2
-  
   # Sync entire auth directory to writable location (including database files, project state, etc.)
   if command -v rsync >/dev/null 2>&1; then
-    rsync -av /home/node/.claude/ "$CLAUDE_WORK_DIR/" 2>/dev/null || echo "rsync failed, trying cp" >&2
+    rsync -a /home/node/.claude/ "$CLAUDE_WORK_DIR/" 2>/dev/null || echo "rsync failed, trying cp" >&2
   else
     # Fallback to cp with comprehensive copying
     cp -r /home/node/.claude/* "$CLAUDE_WORK_DIR/" 2>/dev/null || true
     cp -r /home/node/.claude/.* "$CLAUDE_WORK_DIR/" 2>/dev/null || true
   fi
-  
-  echo "DEBUG: Working directory contents after sync:" >&2
-  ls -la "$CLAUDE_WORK_DIR/" >&2 || echo "DEBUG: Working directory not accessible" >&2
-  
+
   # Set proper ownership and permissions for the node user
   chown -R node:node "$CLAUDE_WORK_DIR"
   chmod 600 "$CLAUDE_WORK_DIR"/.credentials.json 2>/dev/null || true
   chmod 755 "$CLAUDE_WORK_DIR" 2>/dev/null || true
-  
-  echo "DEBUG: Final permissions check:" >&2
-  ls -la "$CLAUDE_WORK_DIR/.credentials.json" >&2 || echo "DEBUG: .credentials.json not found" >&2
   
   echo "Claude authentication directory synced to $CLAUDE_WORK_DIR" >&2
 
@@ -80,8 +71,16 @@ else
 fi
 
 # Clone the repository as node user (shallow clone for performance)
+# Use git credential helper to avoid embedding token in URL (prevents token exposure in logs/proc)
 if [ -n "${GITHUB_TOKEN}" ] && [ -n "${REPO_FULL_NAME}" ]; then
   echo "Cloning repository ${REPO_FULL_NAME} (shallow)..." >&2
+
+  # Configure credential helper so token is not embedded in the clone URL
+  sudo -u node git config --global credential.helper store
+  echo "https://x-access-token:${GITHUB_TOKEN}@github.com" | sudo -u node tee /workspace/.git-credentials > /dev/null
+  chmod 600 /workspace/.git-credentials
+  chown node:node /workspace/.git-credentials
+  sudo -u node git config --global credential.helper "store --file /workspace/.git-credentials"
 
   if [ "${IS_PULL_REQUEST}" = "true" ] && [ -n "${BRANCH_NAME}" ]; then
     # PR: shallow clone the specific branch directly
@@ -89,14 +88,14 @@ if [ -n "${GITHUB_TOKEN}" ] && [ -n "${REPO_FULL_NAME}" ]; then
       --depth 1 \
       --single-branch \
       --branch "${BRANCH_NAME}" \
-      "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git" \
+      "https://github.com/${REPO_FULL_NAME}.git" \
       /workspace/repo >&2
   else
     # Default/auto-tagging: shallow clone main branch
     sudo -u node git clone \
       --depth 1 \
       --single-branch \
-      "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_FULL_NAME}.git" \
+      "https://github.com/${REPO_FULL_NAME}.git" \
       /workspace/repo >&2
   fi
 

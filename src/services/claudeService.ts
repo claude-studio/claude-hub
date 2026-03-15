@@ -409,18 +409,9 @@ function getContainerSecurityConfig(): ContainerSecurityConfig {
     pidsLimit: process.env.CLAUDE_CONTAINER_PIDS_LIMIT ?? '256'
   };
 
-  if (process.env.CLAUDE_CONTAINER_PRIVILEGED === 'true') {
-    return {
-      privileged: true,
-      requiredCapabilities: [],
-      optionalCapabilities: {},
-      resourceLimits
-    };
-  }
-
   return {
     privileged: false,
-    requiredCapabilities: ['NET_ADMIN', 'SYS_ADMIN'],
+    requiredCapabilities: [],
     optionalCapabilities: {
       NET_RAW: process.env.CLAUDE_CONTAINER_CAP_NET_RAW === 'true',
       SYS_TIME: process.env.CLAUDE_CONTAINER_CAP_SYS_TIME === 'true',

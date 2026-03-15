@@ -83,8 +83,8 @@ function verifyWebhookSignature(req: WebhookRequest): boolean {
 
   logger.debug('Webhook signature verification completed');
 
-  // Skip verification if in test mode
-  if (process.env['NODE_ENV'] === 'test' || process.env['SKIP_WEBHOOK_VERIFICATION'] === '1') {
+  // Skip verification only in test environment (never in production)
+  if (process.env['NODE_ENV'] === 'test') {
     logger.warn('Skipping webhook signature verification (test mode)');
     return true;
   }
@@ -99,13 +99,7 @@ function verifyWebhookSignature(req: WebhookRequest): boolean {
     return true;
   }
 
-  logger.warn(
-    {
-      receivedSignature: signature,
-      calculatedSignature: calculatedSignature
-    },
-    'Webhook signature verification failed'
-  );
+  logger.warn('Webhook signature verification failed');
   throw new Error('Webhook signature verification failed');
 }
 

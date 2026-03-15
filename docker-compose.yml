@@ -5,7 +5,6 @@ services:
       - "${PORT:-3002}:${PORT:-3002}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${HOME}/.aws:/root/.aws:ro
       - ${HOME}/.claude-hub:/home/node/.claude
     environment:
       - NODE_ENV=production
@@ -20,7 +19,6 @@ services:
       - CLAUDE_USE_CONTAINERS=1
       - CLAUDE_CONTAINER_IMAGE=claudecode:latest
       - CLAUDE_AUTH_HOST_DIR=${CLAUDE_AUTH_HOST_DIR:-${HOME}/.claude-hub}
-      - DISABLE_LOG_REDACTION=true
       # Claude Code timeout settings for unattended mode
       - BASH_DEFAULT_TIMEOUT_MS=${BASH_DEFAULT_TIMEOUT_MS:-600000}  # 10 minutes default
       - BASH_MAX_TIMEOUT_MS=${BASH_MAX_TIMEOUT_MS:-1200000}  # 20 minutes max
