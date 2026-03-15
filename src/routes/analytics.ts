@@ -46,7 +46,6 @@ router.get('/reviews', async (req: Request, res: Response) => {
 router.get('/suggestions', async (req: Request, res: Response) => {
   try {
     const status = req.query['status'] as string | undefined;
-    const repo = req.query['repo'] as string | undefined;
 
     let query = db.select().from(ruleSuggestions).$dynamic();
 
@@ -54,9 +53,6 @@ router.get('/suggestions', async (req: Request, res: Response) => {
       query = query.where(
         eq(ruleSuggestions.status, status as 'pending' | 'adopted' | 'dismissed')
       );
-    }
-    if (repo) {
-      query = query.where(eq(ruleSuggestions.repoFullName, repo));
     }
 
     const rows = await query.orderBy(desc(ruleSuggestions.createdAt));
@@ -102,10 +98,9 @@ router.put('/suggestions/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/patterns/detect — 패턴 감지 트리거 (관리용)
-router.post('/patterns/detect', async (req: Request, res: Response) => {
+router.post('/patterns/detect', async (_req: Request, res: Response) => {
   try {
-    const repo = req.body?.repo as string | undefined;
-    const created = await detectPatterns(repo);
+    const created = await detectPatterns();
     res.json({ created, message: `Created ${created} new rule suggestions` });
   } catch (err) {
     logger.error({ err }, 'Pattern detection trigger failed');

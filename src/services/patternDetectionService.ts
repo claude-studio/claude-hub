@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { reviewComments, ruleSuggestions } from '../db/schema';
 import type { NewRuleSuggestion } from '../db/schema';
-import { sql, gte, and, eq, count } from 'drizzle-orm';
+import { sql, gte, count } from 'drizzle-orm';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('patternDetectionService');
@@ -55,16 +55,11 @@ function generateRuleText(category: string, patternKey: string, count: number): 
  * Detects repetitive patterns in review comments within the time window
  * and generates rule suggestions when threshold is exceeded.
  */
-export async function detectPatterns(repoFullName?: string): Promise<number> {
+export async function detectPatterns(): Promise<number> {
   const since = new Date();
   since.setDate(since.getDate() - WINDOW_DAYS);
 
   try {
-    // Query comments within the time window, grouped by repo + category
-    const whereClause = repoFullName
-      ? and(gte(reviewComments.createdAt, since), eq(reviewComments.category, repoFullName))
-      : gte(reviewComments.createdAt, since);
-
     const comments = await db
       .select({
         id: reviewComments.id,
@@ -74,7 +69,7 @@ export async function detectPatterns(repoFullName?: string): Promise<number> {
         createdAt: reviewComments.createdAt
       })
       .from(reviewComments)
-      .where(whereClause);
+      .where(gte(reviewComments.createdAt, since));
 
     // Group by pattern key
     const patternMap = new Map<string, PatternGroup>();
@@ -90,7 +85,7 @@ export async function detectPatterns(repoFullName?: string): Promise<number> {
         existing.occurrenceCount++;
       } else {
         patternMap.set(mapKey, {
-          repoFullName: repoFullName ?? 'all',
+          repoFullName: 'all',
           category: comment.category,
           patternKey,
           occurrenceCount: 1,

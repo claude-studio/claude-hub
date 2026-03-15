@@ -2,6 +2,7 @@ import { db } from '../db';
 import { reviews, reviewComments } from '../db/schema';
 import type { NewReview, NewReviewComment } from '../db/schema';
 import { createLogger } from '../utils/logger';
+import { detectPatterns } from './patternDetectionService';
 
 const logger = createLogger('reviewStorageService');
 
@@ -101,7 +102,7 @@ export async function storeReviewResult({
         repoFullName,
         commitSha,
         decision,
-        summary: responseText.substring(0, 1000),
+        summary: responseText.substring(0, 10000),
         processingMs
       } satisfies NewReview)
       .returning({ id: reviews.id });
@@ -129,6 +130,11 @@ export async function storeReviewResult({
       },
       'Review result stored successfully'
     );
+
+    // 저장 후 비동기로 패턴 감지 실행 (non-blocking)
+    detectPatterns().catch((err: unknown) => {
+      logger.warn({ err }, 'Pattern detection failed after review storage');
+    });
   } catch (error) {
     // Non-blocking — log and continue
     logger.warn(
